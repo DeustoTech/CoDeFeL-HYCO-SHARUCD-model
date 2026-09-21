@@ -1,1 +1,46 @@
+# SHARUCD Inverse Problem: HYCO vs. Structure-Preserving PINN Comparison
 
+This repository contains the reference codebase and one-seed baseline experiment for solving the inverse problem of the **SHARUCD** epidemiological model applied to official COVID-19 data from the Basque Country, Spain.
+
+The framework provides a rigorous, fair benchmarking environment between a **HYbrid Co-operative (HYCO)** learning strategy and a **Structure-Preserving Physics-Informed Neural Network (PINN)**.
+
+---
+
+## Technical Details & Key Architectural Features
+
+### 1. Data Window & Initial Conditions
+* **Start Date:** March 8, 2020 (`start_index=4`, corresponding to the earliest observation satisfying $C_I(0) \ge C_H(0)$ and ensuring non-negative initial asymptomatic cases $C_A(0) \ge 0$).
+* **Data Sources:** Includes cumulative and daily incidence counts for Hospitalized ($C_H$), ICU ($C_U$), Deaths ($D$), Recovered ($C_R$), as well as testing volume and positivity rates used to drive rate networks.
+
+### 2. Fair Benchmark Protocol
+* **Identical Baseline Setup:** Both HYCO and PINN share the exact same observation window, parameterization, loss functions, time conventions, epidemiological rate network inputs, and random seeds (`seed=0`).
+* **Training Budgets:** 
+  * **HYCO:** Maximum budget of **5,000 epochs** (higher per-epoch cost due to repeated physical ODE integration).
+  * **PINN:** Maximum budget of **20,000 epochs**.
+  * Both architectures use checkpointed early stopping with automatic restoration of the best model checkpoint.
+
+### 3. Structure-Preserving PINN Construction
+* **Hard Constraints:** Hard-coded population conservation ($S+H+A+R+U+D=1$) and positivity constraints on states.
+* **Non-Convex Monotonicity:** Cumulative state variables ($\dot{C}_H, \dot{C}_A, \dot{C}_U, \dot{C}_R, \dot{D} \ge 0$) are constructed via an analytic integral over a positive multi-bump basis. This guarantees strict monotonicity without forcing convexity, enabling the network to naturally express multiple epidemic waves.
+* **Physics Residuals:** Equations are scaled dynamically by characteristic daily flows (dimensionless daily-flow units) and evaluated at intra-day collocation points (4 points per day).
+
+### 4. HYCO Cooperative Learning Architecture
+* Combines a physical agent (propagated through the SHARUCD ODE using explicit Euler integration with sub-stepping) and a synthetic neural agent.
+* Objectives interact via scale-independent cumulative and incidence co-operative losses.
+* Multi-objective Pareto scalarization points are implemented in independent execution blocks to allow isolated execution.
+
+---
+
+## Execution Environment & Requirements
+
+### Dependencies
+To run the Jupyter notebook (`.ipynb`), ensure you have Python 3.9+ installed along with the following packages:
+
+```bash
+pip install numpy pandas matplotlib torch psutil openpyxl
+
+Dataset Requirement
+The experiment expects the file Data_BasqueCountry.2021.xlsx in the local running directory (or a matching filename pattern).
+
+Citation & Contact
+Developed at DeustoTech (Universidad de Deusto) as part of the research on physics-informed learning and hybrid co-operative models applied to epidemic systems.
